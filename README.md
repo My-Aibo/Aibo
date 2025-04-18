@@ -177,7 +177,6 @@ It talks to your home. It manages your finances across both traditional and dece
 aibo is your translator, your operator, and your protector in a world that’s evolving faster than any human can track.
 The more advanced the world becomes, the more essential your aibo becomes—not to keep up, but to stay in control.
 
-
 -----
 
 
