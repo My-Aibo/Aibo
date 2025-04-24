@@ -2,6 +2,7 @@
 aibo. is your digital twin—an AI agent that thinks, works, and evolves with you. It’s not just software running in the background; it’s a version of you that’s always switched on, always learning, and always ready to help. It understands your routines, goals, and preferences, and it uses that knowledge to manage the details of life so you don’t have to.
 From planning your week to managing your money, keeping track of your health, handling your inbox, or even running parts of your business—whatever you’d normally do with your time, aibo can take care of it faster, smarter, and often better. The more it learns, the more it becomes a natural extension of you. It doesn't just follow instructions—it anticipates them.
 What sets aibo. apart is how deeply it integrates into your life. It doesn't just automate—it adapts. It doesn’t feel like a tool; it feels like a presence. You can rely on it to keep things running while you're focused on the bigger picture—or while you're completely offline.
+
 Want to disappear for a weekend, a week, or more? Switch to autopilot and aibo will handle the daily flow: replying to messages, rescheduling appointments, tracking expenses, watching over your smart home, paying bills, filtering urgent emails, updating your calendar, confirming bookings, managing deliveries, and more. It's like having a second self you can trust to keep things together while you recharge, create, or just live.
 What aibo. brings to your life:
 Effortless flow.
