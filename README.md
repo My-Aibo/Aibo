@@ -66,7 +66,7 @@ This is alignment AI.
 aibo is not the future of assistance. It’s the beginning of a new kind of presence. One that listens, adapts, supports—and, when you’re ready, leads.
 
 
------
+
 
 
 Problem
