@@ -12,6 +12,7 @@ Forget the noise. aibo. filters out distractions and clears your mental bandwidt
 Smarter finances.
 
 
+
 No more guesswork. aibo. understands your financial behavior, tracks your spending and trading patterns, and helps you build smarter strategies over time. It learns from your habits and guides you toward better decisions—whether you're saving, investing, or building passive income streams.
 Support built around you.
 aibo. doesn’t offer generic help—it adapts to who you are. It can plan your week, write your emails, remind you to take a break, run your side hustle, or schedule a doctor’s appointment. You decide how much control to give, and when. You’re always in the driver’s seat.
