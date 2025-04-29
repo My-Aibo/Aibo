@@ -1,0 +1,52 @@
+import React, { useState, useEffect } from 'react';
+import WalletConnect from './components/WalletConnect';
+import TradeHistory from './components/TradeHistory';
+import { walletService } from './services/walletService';
+import './App.css';
+
+function App() {
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+
+  useEffect(() => {
+    // Check if wallet is already connected
+    setIsWalletConnected(walletService.isConnected());
+    
+    // Set up an interval to check wallet connection status
+    const interval = setInterval(() => {
+      setIsWalletConnected(walletService.isConnected());
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <div className="container">
+          <h1>Aibo - Crypto Memory</h1>
+          <p>Your personal AI that remembers and adapts to your crypto journey</p>
+        </div>
+      </header>
+      
+      <main className="container">
+        <WalletConnect />
+        
+        {isWalletConnected ? (
+          <TradeHistory />
+        ) : (
+          <div className="connect-prompt">
+            <p>Connect your wallet to view your trade history, patterns, and personalized insights.</p>
+          </div>
+        )}
+      </main>
+      
+      <footer className="app-footer">
+        <div className="container">
+          <p>&copy; 2025 Aibo. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default App;

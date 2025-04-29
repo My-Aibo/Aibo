@@ -1,0 +1,166 @@
+.trade-journal {
+  background-color: #f9f9fb;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.journal-intro {
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.new-entry-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.new-entry-form h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+}
+
+.mood-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.mood-button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  background-color: #f9f9fb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mood-button.selected {
+  border-color: #3861fb;
+  background-color: #eef1ff;
+}
+
+.mood-button.selected:nth-child(1) {
+  border-color: #10b981;
+  background-color: #ecfdf5;
+}
+
+.mood-button.selected:nth-child(3) {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+textarea, input[type="text"] {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+textarea:focus, input[type="text"]:focus {
+  outline: none;
+  border-color: #3861fb;
+  box-shadow: 0 0 0 2px rgba(56, 97, 251, 0.1);
+}
+
+.add-entry-button {
+  background-color: #3861fb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-entry-button:hover {
+  background-color: #2951e3;
+}
+
+.entries-list h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.no-entries {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+}
+
+.journal-entry {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-left: 4px solid #ddd;
+}
+
+.journal-entry.mood-positive {
+  border-left-color: #10b981;
+}
+
+.journal-entry.mood-neutral {
+  border-left-color: #f59e0b;
+}
+
+.journal-entry.mood-negative {
+  border-left-color: #ef4444;
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.entry-date {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.entry-content {
+  line-height: 1.5;
+  color: #333;
+}
+
+.entry-tags {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  background-color: #f1f5f9;
+  color: #64748b;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .mood-selector {
+    flex-direction: column;
+  }
+}
