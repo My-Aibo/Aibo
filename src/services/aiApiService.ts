@@ -1,4 +1,8 @@
 import { WalletAnalysis } from './tradeAnalysisService';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 class AIApiService {
   private apiKey: string;
@@ -6,10 +10,15 @@ class AIApiService {
   private model: string;
 
   constructor() {
-    // Hardcode the API key directly to avoid environment variable issues
-    this.apiKey = 'b837a457fb97f2ff5d7bad89ca0d8d1d46790221c95c891b666c2d7b954fe08c';
-    this.apiUrl = 'https://api.together.xyz/v1/chat/completions';
-    this.model = 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free';
+    // Load API key and other configurations from environment variables
+    this.apiKey = process.env.TOGETHER_API_KEY || 'b837a457fb97f2ff5d7bad89ca0d8d1d46790221c95c891b666c2d7b954fe08c';
+    this.apiUrl = process.env.TOGETHER_API_URL || 'https://api.together.xyz/v1/chat/completions';
+    this.model = process.env.TOGETHER_MODEL || 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free';ok
+
+    if (!this.apiKey) {
+      console.error("API key is missing. Please set TOGETHER_API_KEY in your environment variables.");
+      throw new Error("API key is missing");
+    }
     
     console.log("AIApiService initialized with model:", this.model);
   }
@@ -19,12 +28,10 @@ class AIApiService {
     walletAnalysis: WalletAnalysis
   ): Promise<string> {
     try {
-      // Create messages array for the chat completion
       const messages = this.createMessages(userQuery, walletAnalysis);
-      
+
       console.log("Sending request to Together.ai API");
-      
-      // Make API call to Together.ai using fetch
+
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
@@ -40,7 +47,7 @@ class AIApiService {
       });
 
       console.log("API Response status:", response.status);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response from Together.ai:', errorText);
@@ -49,20 +56,18 @@ class AIApiService {
 
       const data = await response.json();
       console.log("API Response received, processing...");
-      
+
       if (!data.choices || !data.choices.length) {
         throw new Error('Unexpected API response structure');
       }
-      
-      // Extract the response text
+
       const aiResponse = data.choices[0].message.content.trim();
       console.log("AI response length:", aiResponse.length);
-      
-      // Ensure proper formatting
+
       if (!aiResponse.includes('#')) {
         return `## Trading Analysis\n\n${aiResponse}`;
       }
-      
+
       return aiResponse;
     } catch (error) {
       console.error('Error calling Together.ai API:', error);
@@ -70,7 +75,7 @@ class AIApiService {
     }
   }
 
-  private createMessages(userQuery: string, walletAnalysis: WalletAnalysis): Array<{role: string, content: string}> {
+  private createMessages(userQuery: string, walletAnalysis: WalletAnalysis): Array<{ role: string, content: string }> {
     const systemPrompt = `You are Aibo Trading Advisor, a sophisticated AI financial advisor specialized in cryptocurrency trading analysis.
 
 You analyze crypto trading patterns and provide personalized, actionable advice based on real wallet data.
