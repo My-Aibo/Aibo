@@ -678,3 +678,10 @@ button.connect {
   border-radius: 12px;
   font-size: 0.8rem;
 }
+
+/* Token Search Component Styles */
+.token-search-container {
+  width: 100%;
+  margin-bottom: 20px;
+  grid-column: 1 / -1; /* Spans full width in grid */
+}

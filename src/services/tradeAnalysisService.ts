@@ -15,6 +15,18 @@ export interface TokenTrade {
   solAmount: number;
 }
 
+export interface TokenPrice {
+  symbol: string;
+  name: string;
+  price: number;
+  priceChange24h?: number;
+  volume24h?: number;
+  marketCap?: number;
+  liquidity?: number;
+  chainId: string;
+  pairAddress: string;
+}
+
 export interface TokenAnalysis {
   symbol: string;
   name: string;
@@ -256,11 +268,198 @@ class TradeAnalysisService {
       };
     }
   }
+
+  // Improved token price lookup function
+  async getTokenPrice(tokenSymbol: string): Promise<TokenPrice | null> {
+    try {
+      console.log(`[tradeAnalysisService] Fetching price data for ${tokenSymbol}`);
+      
+      // Normalize the token symbol
+      const normalizedSymbol = tokenSymbol.trim().toUpperCase();
+      console.log(`[tradeAnalysisService] Normalized symbol: ${normalizedSymbol}`);
+      
+      // Use commonly known symbols for standardization
+      const symbolMap: Record<string, string> = {
+        'BTC': 'BTC',
+        'ETH': 'ETH',
+        'SOL': 'SOL',
+        'USDC': 'USDC',
+        'USDT': 'USDT',
+      };
+      
+      // Use mapped symbol if available
+      const searchSymbol = symbolMap[normalizedSymbol] || normalizedSymbol;
+      
+      // Fetch token price from DexScreener with detailed logging
+      const url = `https://api.dexscreener.com/latest/dex/search?q=${searchSymbol}`;
+      console.log(`[tradeAnalysisService] Fetching from URL: ${url}`);
+      
+      const response = await fetch(url);
+      console.log(`[tradeAnalysisService] DexScreener response status: ${response.status}`);
+      
+      if (!response.ok) {
+        console.error(`[tradeAnalysisService] DexScreener API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
+      
+      const data = await response.json();
+      console.log(`[tradeAnalysisService] DexScreener data received:`, data);
+      
+      if (!data.pairs || data.pairs.length === 0) {
+        console.log(`[tradeAnalysisService] No pairs found for ${normalizedSymbol}`);
+        return null;
+      }
+      
+      // Find the most liquid pair
+      const bestPair = data.pairs.sort((a: any, b: any) => {
+        if (!a.liquidity?.usd || !b.liquidity?.usd) return 0;
+        return b.liquidity.usd - a.liquidity.usd;
+      })[0];
+      
+      console.log(`[tradeAnalysisService] Best pair selected:`, bestPair);
+      
+      // Try to find the target token (might be base or quote)
+      let targetToken = null;
+      
+      if (bestPair.baseToken && bestPair.baseToken.symbol && 
+          bestPair.baseToken.symbol.toUpperCase() === normalizedSymbol) {
+        targetToken = bestPair.baseToken;
+        console.log(`[tradeAnalysisService] Found as base token:`, targetToken);
+      } else if (bestPair.quoteToken && bestPair.quoteToken.symbol && 
+                bestPair.quoteToken.symbol.toUpperCase() === normalizedSymbol) {
+        targetToken = bestPair.quoteToken;
+        console.log(`[tradeAnalysisService] Found as quote token:`, targetToken);
+      } else {
+        // Default to base token if we can't find an exact match
+        targetToken = bestPair.baseToken;
+        console.log(`[tradeAnalysisService] No exact match, using base token:`, targetToken);
+      }
+      
+      if (!targetToken) {
+        console.error(`[tradeAnalysisService] Could not determine target token`);
+        return null;
+      }
+      
+      // Create token price object
+      const tokenPrice: TokenPrice = {
+        symbol: targetToken.symbol,
+        name: targetToken.name || targetToken.symbol,
+        price: parseFloat(bestPair.priceUsd) || 0,
+        priceChange24h: bestPair.priceChange?.['24h'] || 0,
+        volume24h: bestPair.volume?.['24h'] || 0,
+        marketCap: bestPair.marketCap || 0,
+        liquidity: bestPair.liquidity?.usd || 0,
+        chainId: bestPair.chainId,
+        pairAddress: bestPair.pairAddress
+      };
+      
+      console.log(`[tradeAnalysisService] Successfully retrieved token price:`, tokenPrice);
+      return tokenPrice;
+    } catch (error) {
+      console.error(`[tradeAnalysisService] Error fetching price for ${tokenSymbol}:`, error);
+      return null;
+    }
+  }
   
   // Replace the mock getAIResponse with the real API call
   async getAIResponse(userQuery: string, walletAnalysis: WalletAnalysis | null): Promise<string> {
     if (!walletAnalysis) {
       return "I don't have enough data about your wallet yet. Please make sure your wallet is connected and has some trading history.";
+    }
+
+    // First, attempt to handle token price queries locally to improve response time
+    try {
+      const lowerQuery = userQuery.toLowerCase();
+      
+      // Check if it's a token price query
+      const isPriceQuery = 
+        lowerQuery.includes('price') || 
+        lowerQuery.includes('worth') || 
+        lowerQuery.includes('value') || 
+        lowerQuery.includes('cost') ||
+        lowerQuery.includes('how much');
+      
+      // Common token map
+      const tokenMap: Record<string, string> = {
+        'btc': 'BTC', 
+        'bitcoin': 'BTC',
+        'eth': 'ETH', 
+        'ethereum': 'ETH',
+        'sol': 'SOL', 
+        'solana': 'SOL',
+        'aibo': 'AIBO',
+        'usdc': 'USDC',
+        'usdt': 'USDT',
+        'doge': 'DOGE',
+        'dogecoin': 'DOGE',
+      };
+      
+      if (isPriceQuery) {
+        // Check for direct token mentions
+        for (const [key, symbol] of Object.entries(tokenMap)) {
+          if (lowerQuery.includes(key)) {
+            console.log(`Detected token price query for ${symbol}`);
+            
+            const tokenPrice = await this.getTokenPrice(symbol);
+            
+            if (tokenPrice) {
+              // Format values
+              const formattedPrice = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 6
+              }).format(tokenPrice.price);
+              
+              const formattedChange = new Intl.NumberFormat('en-US', {
+                style: 'percent',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                signDisplay: 'always'
+              }).format(tokenPrice.priceChange24h / 100);
+              
+              const formattedVolume = tokenPrice.volume24h ? new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                notation: 'compact',
+                compactDisplay: 'short'
+              }).format(tokenPrice.volume24h) : 'N/A';
+              
+              const formattedMarketCap = tokenPrice.marketCap ? new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                notation: 'compact',
+                compactDisplay: 'short'
+              }).format(tokenPrice.marketCap) : 'N/A';
+              
+              const changeEmoji = tokenPrice.priceChange24h >= 0 ? '📈' : '📉';
+              
+              // Create detailed response
+              return `
+## ${tokenPrice.symbol} Price Analysis
+
+**Current Price:** ${formattedPrice}
+**24h Change:** ${formattedChange} ${changeEmoji}
+**24h Volume:** ${formattedVolume}
+**Market Cap:** ${formattedMarketCap}
+
+This data is sourced from DexScreener and represents the most liquid ${tokenPrice.symbol} pair.
+
+${tokenPrice.priceChange24h >= 0 
+  ? `The price is up in the last 24 hours, showing positive momentum.` 
+  : `The price is down in the last 24 hours, showing some bearish pressure.`}
+
+For more detailed information and charts, you can use the token search feature above.
+
+Would you like to know about another token or any specific aspect of ${tokenPrice.symbol}?
+              `;
+            }
+          }
+        }
+      }
+    } catch (priceError) {
+      console.error("Error handling price query:", priceError);
+      // Continue to API call if price handling fails
     }
 
     // Add a fallback mechanism in case the API fails
