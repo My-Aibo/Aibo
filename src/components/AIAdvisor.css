@@ -1,15 +1,49 @@
-/* AIAdvisor.css */
+/* src/components/AIAdvisor.css */
 .ai-advisor {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+}
+
+.advisor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+
+.advisor-header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.balance-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+
+.balance-label {
+  color: var(--text-secondary);
+}
+
+.balance-amount {
+  font-weight: 600;
+}
+
+.balance-usd {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .chat-container {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  height: 600px;
+  height: 650px;
   background-color: rgba(28, 28, 30, 0.5);
   border-radius: 16px;
   overflow: hidden;
@@ -115,9 +149,10 @@
   padding: 1rem;
   background-color: rgba(20, 20, 22, 0.8);
   border-top: 1px solid var(--border-color);
+  align-items: flex-end;
 }
 
-.chat-input input {
+.chat-input textarea {
   flex-grow: 1;
   background-color: rgba(30, 30, 32, 0.7);
   border: 1px solid var(--border-color);
@@ -125,9 +160,14 @@
   padding: 0.75rem 1.25rem;
   color: var(--text-primary);
   font-size: 1rem;
+  resize: none;
+  max-height: 120px;
+  min-height: 40px;
+  font-family: inherit;
+  line-height: 1.4;
 }
 
-.chat-input input:focus {
+.chat-input textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
@@ -146,6 +186,12 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chat-input button.send-button {
+  width: 40px;
+  height: 40px;
 }
 
 .chat-input button:disabled {
@@ -247,6 +293,255 @@
 .connect-wallet-prompt p {
   color: var(--text-secondary);
   max-width: 300px;
+  margin-bottom: 1.5rem;
+}
+
+.connect-button {
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.connect-button:hover {
+  background-color: #0077ED;
+  transform: translateY(-2px);
+}
+
+/* Rich content styling */
+.rich-content {
+  width: 100%;
+  margin: 1rem 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: rgba(40, 40, 44, 0.6);
+  border: 1px solid var(--border-color);
+}
+
+/* Token chart styling */
+.token-chart-container {
+  width: 100%;
+  height: 400px;
+  position: relative;
+}
+
+.token-chart-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Token selection list styling */
+.token-selection {
+  width: 100%;
+}
+
+.selection-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.token-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.token-list-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.token-list-item:last-child {
+  border-bottom: none;
+}
+
+.token-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.token-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  object-fit: contain;
+}
+
+.token-info {
+  flex: 1;
+}
+
+.token-symbol {
+  font-weight: 500;
+}
+
+.token-name {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.token-price {
+  font-weight: 500;
+}
+
+/* Wallet dashboard styling */
+.wallet-dashboard {
+  display: flex;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.dashboard-section {
+  padding: 1rem;
+  background-color: rgba(30, 30, 34, 0.8);
+  border-radius: 8px;
+  flex: 1;
+}
+
+.balance-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.balance-section h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: normal;
+}
+
+.balance-amount {
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.stats-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.stat-item {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.75rem;
+  background-color: rgba(50, 50, 54, 0.5);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.stat-value.positive {
+  color: #4caf50;
+}
+
+.stat-value.negative {
+  color: #f44336;
+}
+
+/* Transactions list styling */
+.transactions-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.transactions-table th {
+  text-align: left;
+  padding: 0.75rem;
+  background-color: rgba(50, 50, 54, 0.5);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.transactions-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.transactions-table tr:last-child td {
+  border-bottom: none;
+}
+
+.buy-tx .tx-type {
+  color: #4caf50;
+}
+
+.sell-tx .tx-type {
+  color: #f44336;
+}
+
+/* Token info container */
+.token-info-container {
+  width: 100%;
+}
+
+/* Textarea auto-resize support */
+.chat-input textarea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-input textarea::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.chat-input textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+/* Add responsiveness */
+@media (max-width: 768px) {
+  .wallet-dashboard {
+    flex-direction: column;
+  }
+  
+  .stats-section {
+    flex-direction: column;
+  }
+  
+  .stat-item {
+    width: 100%;
+  }
+  
+  .message {
+    max-width: 95%;
+  }
+  
+  .advisor-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
 
 @keyframes fadeIn {

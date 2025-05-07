@@ -1,6 +1,7 @@
 import { walletService } from './walletService';
 import { aiApiService } from './aiApiService';
-import { tradeService } from './tradeService'; // Import tradeService
+import { tradeService } from './tradeService';
+import { EnhancedPriceService } from './enhancedPriceService';
 
 // Types for the trade analysis
 export interface TokenTrade {
@@ -57,6 +58,180 @@ export interface WalletAnalysis {
 }
 
 class TradeAnalysisService {
+  private priceService: EnhancedPriceService;
+  private BIRDEYE_API_KEY = '1cd74346f55f428ab24c8821e1124ec1';
+  
+  constructor() {
+    this.priceService = new EnhancedPriceService();
+  }
+  
+  // Get wallet balance
+  async getWalletBalance(publicKey: string): Promise<{ sol: number, usdValue: number }> {
+    try {
+      // This would typically call your wallet service
+      const balance = await walletService.getSolBalance(publicKey);
+      const solPrice = await this.getSolPrice();
+      
+      return {
+        sol: balance,
+        usdValue: balance * solPrice
+      };
+    } catch (error) {
+      console.error('Error getting wallet balance:', error);
+      return { sol: 0, usdValue: 0 };
+    }
+  }
+  
+  // Get SOL price
+  async getSolPrice(): Promise<number> {
+    try {
+      const tokenPrice = await this.getTokenPrice('SOL');
+      return tokenPrice?.price || 0;
+    } catch (error) {
+      console.error('Error getting SOL price:', error);
+      return 0;
+    }
+  }
+  
+  // Search for tokens
+  async searchTokens(query: string): Promise<any[]> {
+    try {
+      // Use Birdeye API to search for tokens
+      const response = await fetch(`https://public-api.birdeye.so/defi/tokens_list?sort_by=v24hUSD&sort_type=desc&offset=0&limit=20&search_key=${encodeURIComponent(query)}`, {
+        headers: {
+          'X-API-KEY': this.BIRDEYE_API_KEY
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.data || !data.data.tokens || data.data.tokens.length === 0) {
+        return [];
+      }
+      
+      // Format tokens for display
+      return data.data.tokens.map((token: any) => ({
+        address: token.address,
+        mintAddress: token.address,
+        symbol: token.symbol || 'Unknown',
+        name: token.name || 'Unknown',
+        price: token.price || 0,
+        priceChange24h: token.change24h || 0,
+        marketCap: token.marketCap || 0,
+        logoUrl: token.logoURI || null,
+        volume24h: token.volume24h || 0,
+        liquidity: token.liquidity || 0,
+      }));
+    } catch (error) {
+      console.error('Error searching tokens:', error);
+      return [];
+    }
+  }
+  
+  // Get token by address
+  async getTokenByAddress(address: string): Promise<any> {
+    try {
+      // Use Birdeye API to get token details
+      const response = await fetch(`https://public-api.birdeye.so/defi/price?address=${address}`, {
+        headers: {
+          'X-API-KEY': this.BIRDEYE_API_KEY
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.data) {
+        return null;
+      }
+      
+      // Get additional metadata
+      const metaResponse = await fetch(`https://public-api.birdeye.so/defi/token_metadata?address=${address}`, {
+        headers: {
+          'X-API-KEY': this.BIRDEYE_API_KEY
+        }
+      });
+      
+      let metadata = null;
+      if (metaResponse.ok) {
+        const metaData = await metaResponse.json();
+        if (metaData.success && metaData.data) {
+          metadata = metaData.data;
+        }
+      }
+      
+      // Format token data
+      const token = data.data;
+      
+      return {
+        address: address,
+        mintAddress: address,
+        symbol: metadata?.symbol || token.symbol || 'Unknown',
+        name: metadata?.name || token.name || 'Unknown',
+        price: token.value || 0,
+        priceChange24h: token.change24h || 0,
+        marketCap: token.marketCap || 0,
+        fdv: token.fdv || 0,
+        holders: token.holders || 0,
+        logoUrl: metadata?.logoURI || null,
+        transactions: token.txns || {},
+        supply: metadata?.supply || {},
+      };
+    } catch (error) {
+      console.error('Error getting token by address:', error);
+      return null;
+    }
+  }
+  
+  // Get enhanced token data
+  async getEnhancedTokenData(address: string): Promise<any> {
+    try {
+      // Get more details for comprehensive analysis
+      const poolsResponse = await fetch(`https://public-api.birdeye.so/defi/pools?address=${address}`, {
+        headers: {
+          'X-API-KEY': this.BIRDEYE_API_KEY
+        }
+      });
+      
+      let poolsData = null;
+      if (poolsResponse.ok) {
+        const poolsResult = await poolsResponse.json();
+        if (poolsResult.success && poolsResult.data && poolsResult.data.items && poolsResult.data.items.length > 0) {
+          poolsData = poolsResult.data.items[0];
+        }
+      }
+      
+      // Return the enhanced data
+      return {
+        volume24h: poolsData?.volume24h || 0,
+        liquidity: poolsData?.liquidity || 0,
+        dexId: poolsData?.source || 'Unknown',
+        poolsData: poolsData || null
+      };
+    } catch (error) {
+      console.error('Error getting enhanced token data:', error);
+      return null;
+    }
+  }
+  
+  // Get recent transactions
+  async getRecentTransactions(): Promise<any[]> {
+    try {
+      // This would typically call your transaction service
+      return await tradeService.getTrades();
+    } catch (error) {
+      console.error('Error getting recent transactions:', error);
+      return [];
+    }
+  }
+  
   // Updated getWalletAnalysis to use real transaction data
   async getWalletAnalysis(): Promise<WalletAnalysis> {
     // Get wallet info to verify it's connected
@@ -269,96 +444,24 @@ class TradeAnalysisService {
     }
   }
 
-  // Improved token price lookup function
+  // Updated getTokenPrice to use EnhancedPriceService
   async getTokenPrice(tokenSymbol: string): Promise<TokenPrice | null> {
-    try {
-      console.log(`[tradeAnalysisService] Fetching price data for ${tokenSymbol}`);
-      
-      // Normalize the token symbol
-      const normalizedSymbol = tokenSymbol.trim().toUpperCase();
-      console.log(`[tradeAnalysisService] Normalized symbol: ${normalizedSymbol}`);
-      
-      // Use commonly known symbols for standardization
-      const symbolMap: Record<string, string> = {
-        'BTC': 'BTC',
-        'ETH': 'ETH',
-        'SOL': 'SOL',
-        'USDC': 'USDC',
-        'USDT': 'USDT',
-      };
-      
-      // Use mapped symbol if available
-      const searchSymbol = symbolMap[normalizedSymbol] || normalizedSymbol;
-      
-      // Fetch token price from DexScreener with detailed logging
-      const url = `https://api.dexscreener.com/latest/dex/search?q=${searchSymbol}`;
-      console.log(`[tradeAnalysisService] Fetching from URL: ${url}`);
-      
-      const response = await fetch(url);
-      console.log(`[tradeAnalysisService] DexScreener response status: ${response.status}`);
-      
-      if (!response.ok) {
-        console.error(`[tradeAnalysisService] DexScreener API error: ${response.status} ${response.statusText}`);
-        return null;
-      }
-      
-      const data = await response.json();
-      console.log(`[tradeAnalysisService] DexScreener data received:`, data);
-      
-      if (!data.pairs || data.pairs.length === 0) {
-        console.log(`[tradeAnalysisService] No pairs found for ${normalizedSymbol}`);
-        return null;
-      }
-      
-      // Find the most liquid pair
-      const bestPair = data.pairs.sort((a: any, b: any) => {
-        if (!a.liquidity?.usd || !b.liquidity?.usd) return 0;
-        return b.liquidity.usd - a.liquidity.usd;
-      })[0];
-      
-      console.log(`[tradeAnalysisService] Best pair selected:`, bestPair);
-      
-      // Try to find the target token (might be base or quote)
-      let targetToken = null;
-      
-      if (bestPair.baseToken && bestPair.baseToken.symbol && 
-          bestPair.baseToken.symbol.toUpperCase() === normalizedSymbol) {
-        targetToken = bestPair.baseToken;
-        console.log(`[tradeAnalysisService] Found as base token:`, targetToken);
-      } else if (bestPair.quoteToken && bestPair.quoteToken.symbol && 
-                bestPair.quoteToken.symbol.toUpperCase() === normalizedSymbol) {
-        targetToken = bestPair.quoteToken;
-        console.log(`[tradeAnalysisService] Found as quote token:`, targetToken);
-      } else {
-        // Default to base token if we can't find an exact match
-        targetToken = bestPair.baseToken;
-        console.log(`[tradeAnalysisService] No exact match, using base token:`, targetToken);
-      }
-      
-      if (!targetToken) {
-        console.error(`[tradeAnalysisService] Could not determine target token`);
-        return null;
-      }
-      
-      // Create token price object
-      const tokenPrice: TokenPrice = {
-        symbol: targetToken.symbol,
-        name: targetToken.name || targetToken.symbol,
-        price: parseFloat(bestPair.priceUsd) || 0,
-        priceChange24h: bestPair.priceChange?.['24h'] || 0,
-        volume24h: bestPair.volume?.['24h'] || 0,
-        marketCap: bestPair.marketCap || 0,
-        liquidity: bestPair.liquidity?.usd || 0,
-        chainId: bestPair.chainId,
-        pairAddress: bestPair.pairAddress
-      };
-      
-      console.log(`[tradeAnalysisService] Successfully retrieved token price:`, tokenPrice);
-      return tokenPrice;
-    } catch (error) {
-      console.error(`[tradeAnalysisService] Error fetching price for ${tokenSymbol}:`, error);
-      return null;
-    }
+    return await this.priceService.getTokenPrice(tokenSymbol);
+  }
+  
+  // Helper method to check if a query is asking for token analysis
+  private isTokenAnalysisQuery(query: string): boolean {
+    // Check if the query is asking for token analysis
+    const tokenAnalysisPattern = /analyze\s+(?:this\s+)?token|token\s+analysis|check\s+(?:this\s+)?token|review\s+(?:this\s+)?token/i;
+    return tokenAnalysisPattern.test(query);
+  }
+  
+  // Helper to extract token address from query
+  private extractTokenAddress(query: string): string | null {
+    // Look for patterns like (address), (0x...), etc.
+    const addressPattern = /\(([a-zA-Z0-9]{32,})\)/i;
+    const match = query.match(addressPattern);
+    return match ? match[1] : null;
   }
   
   // Replace the mock getAIResponse with the real API call
@@ -367,7 +470,100 @@ class TradeAnalysisService {
       return "I don't have enough data about your wallet yet. Please make sure your wallet is connected and has some trading history.";
     }
 
-    // First, attempt to handle token price queries locally to improve response time
+    // Check if this is a token analysis query
+    if (this.isTokenAnalysisQuery(userQuery)) {
+      console.log("Detected token analysis request:", userQuery);
+      
+      const tokenAddress = this.extractTokenAddress(userQuery);
+      
+      if (tokenAddress) {
+        console.log("Found token address in query:", tokenAddress);
+        
+        try {
+          // Try to get token data from Birdeye API
+          const response = await fetch(`https://public-api.birdeye.so/defi/price?address=${tokenAddress}`, {
+            headers: {
+              'X-API-KEY': this.BIRDEYE_API_KEY
+            }
+          });
+          
+          // Also fetch metadata for more details
+          const metaResponse = await fetch(`https://public-api.birdeye.so/defi/token_metadata?address=${tokenAddress}`, {
+            headers: {
+              'X-API-KEY': this.BIRDEYE_API_KEY
+            }
+          });
+          
+          // Fetch pool data for more insights
+          const poolsResponse = await fetch(`https://public-api.birdeye.so/defi/pools?address=${tokenAddress}`, {
+            headers: {
+              'X-API-KEY': this.BIRDEYE_API_KEY
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const metaData = metaResponse.ok ? await metaResponse.json() : { success: false };
+            const poolsData = poolsResponse.ok ? await poolsResponse.json() : { success: false };
+            
+            if (data.success && data.data) {
+              const token = data.data;
+              const meta = metaData.success && metaData.data ? metaData.data : {};
+              const pools = poolsData.success && poolsData.data?.items?.length ? poolsData.data.items[0] : null;
+              
+              // Create a detailed prompt for the AI
+              const enhancedPrompt = `
+## Token Analysis Request
+
+Please analyze this Solana token with the following data:
+
+### Basic Information
+- **Name:** ${meta.name || token.name || "Unknown"}
+- **Symbol:** ${meta.symbol || token.symbol || "Unknown"}
+- **Address:** ${tokenAddress}
+
+### Market Data
+- **Current Price:** $${token.value?.toFixed(8) || "Unknown"}
+- **24h Price Change:** ${token.change24h ? `${token.change24h > 0 ? '+' : ''}${token.change24h.toFixed(2)}%` : "Unknown"}
+- **Market Cap:** ${token.marketCap ? `$${token.marketCap.toLocaleString()}` : "Unknown"}
+- **Fully Diluted Valuation:** ${token.fdv ? `$${token.fdv.toLocaleString()}` : "Unknown"}
+
+### Trading Activity
+- **24h Volume:** ${pools?.volume24h ? `$${pools.volume24h.toLocaleString()}` : "Unknown"}
+- **Liquidity:** ${pools?.liquidity ? `$${pools.liquidity.toLocaleString()}` : "Unknown"}
+- **Holders Count:** ${token.holders?.toLocaleString() || "Unknown"}
+- **24h Transactions:** ${token.txns?.h24 || 0} (Buys: ${token.txns?.h24Buys || 0}, Sells: ${token.txns?.h24Sells || 0})
+
+### Token Supply
+- **Total Supply:** ${meta.supply?.total ? meta.supply.total.toLocaleString() : "Unknown"}
+- **Circulating Supply:** ${meta.supply?.circulating ? meta.supply.circulating.toLocaleString() : "Unknown"}
+
+Please provide a detailed analysis of this token including:
+1. Price action analysis and potential outlook
+2. Trading volume and liquidity assessment
+3. Market sentiment based on buy/sell ratio
+4. Risk factors and investment considerations
+5. Any red flags or positive indicators that stand out
+`;
+
+              try {
+                // Call the AI API with the enhanced prompt
+                const analysisResponse = await aiApiService.generateResponse(enhancedPrompt, walletAnalysis);
+                return analysisResponse;
+              } catch (error) {
+                console.error("Error generating AI response for token:", error);
+                // Fall through to general query handling
+              }
+            }
+          }
+        } catch (tokenError) {
+          console.error("Error fetching token data:", tokenError);
+          // Fall through to general query handling
+        }
+      }
+    }
+
+    // Handle price queries for known tokens
     try {
       const lowerQuery = userQuery.toLowerCase();
       
@@ -443,15 +639,13 @@ class TradeAnalysisService {
 **24h Volume:** ${formattedVolume}
 **Market Cap:** ${formattedMarketCap}
 
-This data is sourced from DexScreener and represents the most liquid ${tokenPrice.symbol} pair.
+This data is sourced from Birdeye and represents the most liquid ${tokenPrice.symbol} pair.
 
 ${tokenPrice.priceChange24h >= 0 
   ? `The price is up in the last 24 hours, showing positive momentum.` 
   : `The price is down in the last 24 hours, showing some bearish pressure.`}
 
-For more detailed information and charts, you can use the token search feature above.
-
-Would you like to know about another token or any specific aspect of ${tokenPrice.symbol}?
+Would you like me to show you a chart or provide a more detailed analysis of ${tokenPrice.symbol}?
               `;
             }
           }
@@ -462,9 +656,9 @@ Would you like to know about another token or any specific aspect of ${tokenPric
       // Continue to API call if price handling fails
     }
 
-    // Add a fallback mechanism in case the API fails
+    // General query handling
     try {
-      console.log("Calling Together.ai API for query:", userQuery);
+      console.log("Calling Together.ai API for general query:", userQuery);
       
       // Call the Together.ai API via our service
       const response = await aiApiService.generateResponse(userQuery, walletAnalysis);

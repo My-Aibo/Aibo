@@ -145,6 +145,7 @@ class WalletService {
         chainId: 0,
         network: NETWORK_NAMES[this.currentEndpoint] || 'Solana',
         isConnected: true,
+        publicKey: publicKey
       };
       
       return this.walletInfo;
@@ -265,6 +266,40 @@ class WalletService {
     }));
     
     console.log("Wallet forcibly set to connected state for debugging");
+  }
+  
+  // Added getSolBalance method to support enhanced functionality
+  async getSolBalance(publicKeyString: string): Promise<number> {
+    if (!this.connection) {
+      await this.setupConnection();
+    }
+    
+    if (!this.connection) {
+      console.error('Unable to establish connection to Solana network');
+      return 0;
+    }
+    
+    try {
+      const publicKey = new PublicKey(publicKeyString);
+      const balance = await this.connection.getBalance(publicKey);
+      return balance / LAMPORTS_PER_SOL;
+    } catch (error) {
+      console.error('Error getting SOL balance:', error);
+      
+      // Try alternative endpoint if the current one fails
+      try {
+        await this.tryAlternativeEndpoint();
+        if (this.connection) {
+          const publicKey = new PublicKey(publicKeyString);
+          const balance = await this.connection.getBalance(publicKey);
+          return balance / LAMPORTS_PER_SOL;
+        }
+      } catch (fallbackError) {
+        console.error('Error getting SOL balance with alternative endpoint:', fallbackError);
+      }
+      
+      return 0;
+    }
   }
   
   private handleAccountChanged = async () => {
