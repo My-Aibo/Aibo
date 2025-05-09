@@ -1,4 +1,255 @@
+import { PublicKey, Connection, ParsedTransactionWithMeta } from '@solana/web3.js';
+import { walletService } from './walletService';
 import { Trade, TradingPattern, TradeAnalytics } from '../types';
+
+const LAMPORTS_PER_SOL = 1000000000;
+
+class TradeService {
+  private trades: Trade[] = [];
+  private patterns: TradingPattern[] = [];
+  private analytics: TradeAnalytics | null = null;
+  private connection: Connection | null = null;
+  private HELIUS_API_KEY = 'your-helius-api-key'; // Add this to your .env file later
+  
+  constructor() {
+    this.setupConnection();
+  }
+  
+  private async setupConnection() {
+    try {
+      // Use Helius RPC node which provides enhanced transaction data
+      this.connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${this.HELIUS_API_KEY}`, 'confirmed');
+    } catch (error) {
+      console.error('Error setting up connection:', error);
+    }
+  }
+  
+  // Get last 30 trades for analysis
+  async getLast30Trades(): Promise<Trade[]> {
+    const walletInfo = walletService.getWalletInfo();
+    
+    if (!walletInfo || !walletInfo.isConnected) {
+      throw new Error('Wallet not connected');
+    }
+    
+    // Ensure we have a connection
+    if (!this.connection) {
+      await this.setupConnection();
+    }
+    
+    if (!this.connection) {
+      throw new Error('Unable to establish connection to Solana');
+    }
+    
+    try {
+      // Get the wallet public key
+      const publicKey = new PublicKey(walletInfo.address);
+      
+      // Use Helius enhanced API to get transactions with additional metadata
+      const response = await fetch(`https://api.helius.xyz/v0/addresses/${publicKey.toString()}/transactions?api-key=${this.HELIUS_API_KEY}&limit=50`);
+      
+      if (!response.ok) {
+        throw new Error(`Helius API error: ${response.statusText}`);
+      }
+      
+      const transactions = await response.json();
+      
+      // Transform Helius transactions to our Trade format
+      const trades: Trade[] = [];
+      
+      for (const tx of transactions) {
+        // Try to parse transaction as a trade
+        const trade = this.parseHeliusTransaction(tx);
+        if (trade) {
+          trades.push(trade);
+        }
+        
+        // If we have 30 trades, break
+        if (trades.length >= 30) {
+          break;
+        }
+      }
+      
+      // Sort by timestamp, newest first
+      trades.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      
+      // Save the trades
+      this.trades = trades.slice(0, 30);
+      
+      // Generate patterns and analytics based on the real transaction data
+      if (this.trades.length > 0) {
+        this.patterns = this.generatePatterns(this.trades);
+        this.analytics = this.generateAnalytics(this.trades);
+      }
+      
+      return this.trades;
+    } catch (error) {
+      console.error('Error fetching transaction history:', error);
+      throw new Error('Failed to load transaction history');
+    }
+  }
+  
+  // Parse Helius transaction format
+  private parseHeliusTransaction(transaction: any): Trade | null {
+    try {
+      // Check if this is a trade transaction
+      const isSwap = this.isSwapTransaction(transaction);
+      const isTransfer = this.isTransferTransaction(transaction);
+      
+      if (!isSwap && !isTransfer) {
+        return null;
+      }
+      
+      // Extract basic details
+      const timestamp = new Date(transaction.timestamp * 1000);
+      const txid = transaction.signature;
+      const type = this.determineTradeType(transaction);
+      
+      // Extract token details - this requires parsing Helius response format
+      const { tokenSymbol, tokenAmount, tokenPrice } = this.extractTokenDetails(transaction);
+      
+      if (!tokenSymbol || tokenAmount === 0) {
+        return null;
+      }
+      
+      // Calculate values
+      const totalValue = tokenAmount * (tokenPrice || 0);
+      const successful = transaction.successful;
+      
+      return {
+        id: txid,
+        timestamp,
+        type,
+        cryptoAsset: tokenSymbol,
+        amount: tokenAmount,
+        price: tokenPrice || 0,
+        totalValue,
+        exchange: this.extractExchange(transaction),
+        successful,
+        notes: ''
+      };
+    } catch (error) {
+      console.error('Error parsing Helius transaction:', error);
+      return null;
+    }
+  }
+  
+  // Helper method to determine if transaction is a swap (trade)
+  private isSwapTransaction(transaction: any): boolean {
+    // Check if this is a Jupiter or other DEX swap
+    if (transaction.type === 'SWAP' || 
+        transaction.description?.includes('Swap') ||
+        (transaction.events?.swap && transaction.events.swap.length > 0)) {
+      return true;
+    }
+    return false;
+  }
+  
+  // Helper method to determine if transaction is a token transfer
+  private isTransferTransaction(transaction: any): boolean {
+    if (transaction.type === 'TRANSFER' || 
+        (transaction.events?.transfer && transaction.events.transfer.length > 0)) {
+      return true;
+    }
+    return false;
+  }
+  
+  // Determine if this is a buy or sell
+  private determineTradeType(transaction: any): 'buy' | 'sell' {
+    // For swaps, we need to determine direction
+    if (this.isSwapTransaction(transaction)) {
+      // This is oversimplified - in real implementation you'd check 
+      // if tokens are coming to the wallet (buy) or going out (sell)
+      const sourceIsUser = transaction.events?.swap?.[0]?.source === transaction.feePayer;
+      return sourceIsUser ? 'sell' : 'buy';
+    }
+    
+    // For transfers, if tokens are coming in it's a buy, otherwise a sell
+    if (this.isTransferTransaction(transaction)) {
+      const isIncoming = transaction.events?.transfer?.[0]?.toUserAccount === transaction.feePayer;
+      return isIncoming ? 'buy' : 'sell';
+    }
+    
+    // Default fallback
+    return 'buy';
+  }
+  
+  // Extract token details from transaction
+  private extractTokenDetails(transaction: any): { tokenSymbol: string, tokenAmount: number, tokenPrice: number | null } {
+    let tokenSymbol = 'Unknown';
+    let tokenAmount = 0;
+    let tokenPrice = null;
+    
+    try {
+      // For swap transactions
+      if (this.isSwapTransaction(transaction) && transaction.events?.swap?.[0]) {
+        const swap = transaction.events.swap[0];
+        tokenSymbol = swap.tokenIn.symbol || swap.tokenOut.symbol || 'Unknown';
+        tokenAmount = swap.tokenIn.amount || swap.tokenOut.amount || 0;
+        
+        // Try to calculate price based on native values
+        if (swap.nativeInput && swap.tokenIn.amount) {
+          tokenPrice = swap.nativeInput / swap.tokenIn.amount;
+        } else if (swap.nativeOutput && swap.tokenOut.amount) {
+          tokenPrice = swap.nativeOutput / swap.tokenOut.amount;
+        }
+      }
+      
+      // For transfer transactions
+      else if (this.isTransferTransaction(transaction) && transaction.events?.transfer?.[0]) {
+        const transfer = transaction.events.transfer[0];
+        tokenSymbol = transfer.tokenName || transfer.mint?.substring(0, 4) || 'Unknown';
+        tokenAmount = transfer.amount || 0;
+        
+        // Transfers usually don't have price info in the transaction
+        tokenPrice = null;
+      }
+    } catch (error) {
+      console.error('Error extracting token details:', error);
+    }
+    
+    return { tokenSymbol, tokenAmount, tokenPrice };
+  }
+  
+  // Extract exchange information
+  private extractExchange(transaction: any): string {
+    // Try to determine which exchange was used
+    if (transaction.description?.includes('Jupiter')) {
+      return 'Jupiter';
+    } else if (transaction.description?.includes('Raydium')) {
+      return 'Raydium';
+    } else if (transaction.description?.includes('Orca')) {
+      return 'Orca';
+    }
+    
+    return 'Unknown DEX';
+  }
+  
+  // Keep existing methods
+  async getTrades(): Promise<Trade[]> {
+    // Update to use getLast30Trades or keep existing implementation
+    return this.getLast30Trades();
+  }
+  
+  // Existing code...
+  private generatePatterns(trades: Trade[]): TradingPattern[] {
+    // Your existing implementation
+  }
+  
+  private generateAnalytics(trades: Trade[]): TradeAnalytics {
+    // Your existing implementation
+  }
+  
+  async getTradingPatterns(): Promise<TradingPattern[]> {
+    // Your existing implementation
+  }
+  
+  async getTradeAnalytics(): Promise<TradeAnalytics> {
+    // Your existing implementation
+  }
+}
+
+export const tradeService = new TradeService();import { Trade, TradingPattern, TradeAnalytics } from '../types';
 import { Connection, PublicKey, ParsedTransactionWithMeta, ParsedInstruction, PartiallyDecodedInstruction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { walletService } from './walletService';
 import axios from 'axios';
