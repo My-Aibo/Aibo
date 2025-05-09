@@ -2,41 +2,66 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { WalletInfo } from '../types';
 
-// Updated RPC endpoints with public endpoints that allow CORS from localhost
-const RPC_ENDPOINTS = [
-  'https://api.mainnet-beta.solana.com',  // Official Solana mainnet
-  'https://solana.public-rpc.com',        // Public endpoint
-  'https://free.rpcpool.com',             // RPCPool free endpoint
-  'https://api.devnet.solana.com'         // Keep devnet as last resort
-];
-
-// Update the NETWORK_NAMES too
-const NETWORK_NAMES = {
-  'https://api.mainnet-beta.solana.com': 'Solana Mainnet',
-  'https://solana.public-rpc.com': 'Solana Mainnet',
-  'https://free.rpcpool.com': 'Solana Mainnet',
-  'https://api.devnet.solana.com': 'Solana Devnet'
-};
-
 class WalletService {
   private walletInfo: WalletInfo | null = null;
   private connection: Connection | null = null;
   private currentEndpoint: string = '';
-  
-  constructor() {
-    // Start with the first endpoint (mainnet)
-    this.setupConnection();
-    setTimeout(() => this.checkIfWalletIsConnected(), 500);
+  private defaultRPC: string = 'https://api.mainnet-beta.solana.com';
+  private endpoints = [
+    `https://mainnet.helius-rpc.com/?api-key=${import.meta.env.VITE_HELIUS_API_KEY || '4f270978-3959-4c94-81dc-332e11477358'}`,
+    'https://api.mainnet-beta.solana.com',
+    'https://api.devnet.solana.com'
+  ];
+  private HELIUS_API_KEY: string;
+  // These handlers are defined later in the classconstructor() {
+    // Get API key from environment
+    this.HELIUS_API_KEY = import.meta.env.VITE_HELIUS_API_KEY || '4f270978-3959-4c94-81dc-332e11477358';
+
+    // Check for stored network preference
+    const savedNetwork = localStorage.getItem('selectedNetwork') || 'mainnet';
+
+    // Determine RPC URL based on network
+    if (savedNetwork === 'mainnet') {
+      this.defaultRPC = `https://mainnet.helius-rpc.com/?api-key=${this.HELIUS_API_KEY}`;
+    } else {
+      this.defaultRPC = 'https://api.devnet.solana.com';
+    }
+
+    console.log(`WalletService initialized with default RPC: ${this.defaultRPC.replace(this.HELIUS_API_KEY, 'xxxxx')}`);
+
+    // Initialize connection
+    this.setupConnection().then(() => {
+      setTimeout(() => this.checkIfWalletIsConnected(), 500);
+    }).catch(err => {
+      console.error("Failed to initialize wallet connection:", err);
+    });
   }
   
+  // Handle wallet account change events
+  private handleAccountChanged = async (publicKey: any) => {
+    if (publicKey) {
+      await this.setWalletInfo(publicKey.toString());
+      window.dispatchEvent(new CustomEvent('walletChanged', { 
+        detail: { walletInfo: this.walletInfo } 
+      }));
+    }
+  };
+  
+  // Handle wallet disconnect events
+  private handleDisconnect = () => {
+    this.walletInfo = null;
+    window.dispatchEvent(new CustomEvent('walletDisconnected'));
+    console.log('Wallet disconnected');
+  };
+
   private async setupConnection() {
     // Check if we should force mainnet for development
     const forceMainnet = localStorage.getItem('forceMainnet') === 'true';
-    
+
     // Filter endpoints if forcing mainnet
     const endpoints = forceMainnet 
-      ? RPC_ENDPOINTS.filter(endpoint => !endpoint.includes('devnet'))
-      : RPC_ENDPOINTS;
+      ? this.endpoints.filter(endpoint => !endpoint.includes('devnet'))
+      : this.endpoints;
       
     // Try each endpoint in order until one works
     for (const endpoint of endpoints) {
@@ -59,14 +84,8 @@ class WalletService {
             });
           }
         };
-        
-        this.connection = new Connection(endpoint, {
-          commitment: 'confirmed',
-          confirmTransactionInitialTimeout: 30000, // 30 seconds
-          disableRetryOnRateLimit: false,
-          // Add fetch configuration
-          ...fetchConfig
-        });
+          // Use only basic configuration to avoid TypeScript errors with fetch
+        this.connection = new Connection(endpoint, 'confirmed');
         
         // Test with retries
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -143,7 +162,7 @@ class WalletService {
         address,
         balance: balance / LAMPORTS_PER_SOL,
         chainId: 0,
-        network: NETWORK_NAMES[this.currentEndpoint] || 'Solana',
+        network: 'Solana',
         isConnected: true,
         publicKey: publicKey
       };
@@ -157,16 +176,16 @@ class WalletService {
   
   private async tryAlternativeEndpoint() {
     // Find the current endpoint index
-    const currentIndex = RPC_ENDPOINTS.indexOf(this.currentEndpoint);
+    const currentIndex = this.endpoints.indexOf(this.currentEndpoint);
     
     // Try the next endpoint in the list, focusing on mainnet endpoints
-    for (let i = 0; i < RPC_ENDPOINTS.length; i++) {
+    for (let i = 0; i < this.endpoints.length; i++) {
       // Skip the current endpoint
-      const nextIndex = (currentIndex + i + 1) % RPC_ENDPOINTS.length;
-      const nextEndpoint = RPC_ENDPOINTS[nextIndex];
+      const nextIndex = (currentIndex + i + 1) % this.endpoints.length;
+      const nextEndpoint = this.endpoints[nextIndex];
       
       // Skip devnet if we're looking for alternatives and we have working mainnet endpoints
-      if (nextEndpoint.includes('devnet') && i < RPC_ENDPOINTS.length - 1) {
+      if (nextEndpoint.includes('devnet') && i < this.endpoints.length - 1) {
         continue;
       }
       
@@ -184,9 +203,7 @@ class WalletService {
     // If we reach here, all endpoints failed
     console.error('All alternative Solana RPC endpoints failed');
     this.connection = null;
-  }
-  
-  async connect(): Promise<WalletInfo> {
+  }    async connect(rpcUrl: string = ''): Promise<WalletInfo> {
     try {
       const solana = (window as any).solana;
       
@@ -196,6 +213,24 @@ class WalletService {
       
       if (!solana.isPhantom) {
         throw new Error('Please use Phantom wallet');
+      }
+      
+      // If no RPC URL is provided, use the default
+      if (!rpcUrl) {
+        rpcUrl = this.defaultRPC || 'https://api.mainnet-beta.solana.com';
+      }
+      
+      // Make sure we have a connection setup
+      if (!this.connection || this.currentEndpoint !== rpcUrl) {
+        try {          // Use only the commitment parameter to avoid TypeScript errors
+          this.connection = new Connection(rpcUrl, 'confirmed');
+          this.currentEndpoint = rpcUrl;
+        } catch (connError) {
+          console.error('Error setting up connection:', connError);
+          // Fall back to default RPC if provided URL fails
+          this.connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+          this.currentEndpoint = 'https://api.mainnet-beta.solana.com';
+        }
       }
       
       // Connect to the wallet
@@ -227,7 +262,7 @@ class WalletService {
   }
   
   getCurrentNetwork(): string {
-    return NETWORK_NAMES[this.currentEndpoint] || 'Unknown';
+    return 'Solana';
   }
   
   async disconnect(): Promise<void> {
@@ -249,7 +284,6 @@ class WalletService {
     window.dispatchEvent(new CustomEvent('walletDisconnected'));
   }
   
-  // This is the new method you should add
   public forceSetConnected(): void {
     // Create a minimal wallet info object for testing
     this.walletInfo = {
@@ -268,7 +302,6 @@ class WalletService {
     console.log("Wallet forcibly set to connected state for debugging");
   }
   
-  // Added getSolBalance method to support enhanced functionality
   async getSolBalance(publicKeyString: string): Promise<number> {
     if (!this.connection) {
       await this.setupConnection();
@@ -325,6 +358,80 @@ class WalletService {
     // Dispatch an event that components can listen to
     window.dispatchEvent(new CustomEvent('walletDisconnected'));
   };
+
+  // Add proper rate limiting to prevent 429 errors
+  private async fetchWithRateLimit<T>(method: string, params: any[]): Promise<T> {
+    // Simple delay function
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    let attempts = 0;
+    const maxAttempts = 3;
+    const baseDelay = 500; // 500ms base delay
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await fetch(this.defaultRPC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: Date.now().toString(),
+            method,
+            params
+          })
+        });
+        
+        if (response.status === 429) {
+          attempts++;
+          const backoffDelay = baseDelay * Math.pow(2, attempts); // Exponential backoff
+          console.log(`Rate limited (429), retrying after ${backoffDelay}ms...`);
+          await delay(backoffDelay);
+          continue;
+        }
+        
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(`RPC Error: ${data.error.message || JSON.stringify(data.error)}`);
+        }
+        
+        return data.result as T;
+      } catch (error) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw error;
+        }
+        const backoffDelay = baseDelay * Math.pow(2, attempts);
+        console.log(`Error fetching ${method}, retrying after ${backoffDelay}ms...`);
+        await delay(backoffDelay);
+      }
+    }
+    
+    throw new Error(`Failed to fetch ${method} after ${maxAttempts} attempts`);
+  }
+
+  // Add this method to your WalletService class
+  public switchNetwork(network: 'mainnet' | 'devnet'): void {
+    try {
+      // Update the RPC URL based on network
+      let rpcUrl = '';
+      
+      if (network === 'mainnet') {
+        rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${this.HELIUS_API_KEY}`;
+      } else {
+        rpcUrl = 'https://api.devnet.solana.com';
+      }
+      
+      // Store the selected network
+      localStorage.setItem('selectedNetwork', network);
+      
+      // Reconnect to the new RPC
+      this.connect(rpcUrl);
+      
+      console.log(`WalletService: Switched to ${network} network with RPC ${rpcUrl}`);
+    } catch (error) {
+      console.error('WalletService: Error switching network:', error);
+    }
+  }
 }
 
 export const walletService = new WalletService();

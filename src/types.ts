@@ -12,33 +12,88 @@ export interface Trade {
 }
 
 export interface TradingPattern {
-  id: string;
-  name: string;
-  description: string;
-  confidence: number;
-  tradeIds: string[];
-  suggestedAction: string;
+  id?: string;
+  name?: string;
+  description?: string;
+  type: string;
+  token?: string;
+  strength?: string;
+  trades?: string[];
+  // Add other pattern properties as needed
+}
+
+export interface TokenAnalysis {
+  token: string;
+  totalTrades: number;
+  profitLoss: number;
+  successRate: number;
+  
+  // Additional properties used in various parts of the application
+  symbol: string;
+  name?: string;
+  totalProfit: number;
+  profitableTrades: number;
+  averageHoldTime: string;
+  bestTrade: {
+    profit: number;
+    date: number;
+  };
+  worstTrade: {
+    loss: number;
+    date: number;
+  };
 }
 
 export interface TradeAnalytics {
+  overallSuccessRate: number;
+  totalProfitLoss: number;
+  mostProfitableToken: string;
+  leastProfitableToken: string;
+  averageHoldTime: string;
+  tradeFrequency: string;
+  recommendations: string[];
+  tokenAnalyses: TokenAnalysis[];
+  
+  // Adding missing properties that are used in tradeService.ts
   totalTrades: number;
+  buyCount: number;
+  sellCount: number;
+  totalVolume: number;
   successRate: number;
-  averageReturn: number;
-  topAsset: string;
-  worstAsset: string;
-  mostTraded: string;
-  performance: {
-    day: number;
-    week: number;
-    month: number;
-    year: number;
-  };
+  averageValue: number;
+  topToken: { symbol: string; volume: number };
+  recentActivity: string;
 }
-// Add this to your types.ts file if it's not already there
+
 export interface WalletInfo {
   address: string;
-  balance: number;
-  chainId: number;
-  network: string;
   isConnected: boolean;
+  balance?: number;
+  network: string;
+  publicKey?: any; // Using any here because Solana's PublicKey type may not be imported directly
+  chainId?: number;
+}
+
+export interface TokenPrice {
+  symbol: string;
+  name: string;
+  price: number;
+  priceChange24h?: number;
+  volume24h?: number;
+  marketCap?: number;
+  liquidity?: number;
+  chainId?: string;
+  pairAddress?: string;
+  contractAddress?: string;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: Date;
+  richContent?: {
+    type: string;
+    data: any;
+  };
 }

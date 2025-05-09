@@ -92,10 +92,10 @@ class AIApiService {
         return `## Trading Analysis\n\n${aiResponse}`;
       }
       
-      return aiResponse;
-    } catch (error) {
+      return aiResponse;    } catch (error) {
       console.error('[AIApiService] Error generating response:', error);
-      return `## Error Processing Request\n\nI'm sorry, but I encountered an error while processing your request. Please try again later or rephrase your question.\n\nError details: ${error.message}`;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return `## Error Processing Request\n\nI'm sorry, but I encountered an error while processing your request. Please try again later or rephrase your question.\n\nError details: ${errorMessage}`;
     }
   }
 
@@ -252,13 +252,13 @@ My trading data:
 
 Token details:
 ${walletAnalysis.tokenAnalyses.map(token => `
-${token.symbol} (${token.name}):
+${token.symbol || ''} (${token.name || 'Unknown'}):
 - Total Trades: ${token.totalTrades}
-- Profitable Trades: ${token.profitableTrades} (${token.successRate}% success)
-- Total Profit/Loss: $${token.totalProfit}
-- Average Hold Time: ${token.averageHoldTime}
-- Best Trade: +$${token.bestTrade.profit} on ${new Date(token.bestTrade.date).toLocaleDateString()}
-- Worst Trade: $${token.worstTrade.loss} on ${new Date(token.worstTrade.date).toLocaleDateString()}
+- Profitable Trades: ${token.profitableTrades || 0} (${token.successRate}% success)
+- Total Profit/Loss: $${token.totalProfit || 0}
+- Average Hold Time: ${token.averageHoldTime || 'Unknown'}
+${token.bestTrade ? `- Best Trade: +$${token.bestTrade.profit} on ${new Date(token.bestTrade.date).toLocaleDateString()}` : '- Best Trade: N/A'}
+${token.worstTrade ? `- Worst Trade: $${token.worstTrade.loss} on ${new Date(token.worstTrade.date).toLocaleDateString()}` : '- Worst Trade: N/A'}
 `).join('\n')}`;
 
     return [

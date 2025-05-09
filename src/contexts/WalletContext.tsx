@@ -82,10 +82,9 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Refresh wallet info
-  const refreshWalletInfo = () => {
-    const info = walletService.getWalletInfo();
+  const refreshWalletInfo = () => {    const info = walletService.getWalletInfo();
     setWalletInfo(info);
-    setIsConnected(info && info.isConnected);
+    setIsConnected(info ? info.isConnected : false);
   };
 
   return (

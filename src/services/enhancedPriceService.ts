@@ -54,7 +54,7 @@ export class EnhancedPriceService {
       }
       
       // Filter out pairs with extremely low liquidity or volume
-      const viablePairs = searchResults.pairs.filter(pair => {
+      const viablePairs = searchResults.pairs.filter((pair: any) => {
         const liquidityUsd = pair.liquidity?.usd || 0;
         const volume24h = pair.volume?.h24 || 0;
         

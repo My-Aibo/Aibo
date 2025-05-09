@@ -1,6 +1,7 @@
 import { walletService } from './walletService';
 import { aiApiService } from './aiApiService';
 import { tradeService } from './tradeService'; // Import tradeService
+import { Trade } from '../types'; // Import Trade type
 
 // Types for the trade analysis
 export interface TokenTrade {
@@ -88,24 +89,22 @@ class TradeAnalysisService {
           tokenAnalyses: []
         };
       }
+        // Group transactions by token
+      const tokenGroups: Record<string, Trade[]> = {};
       
-      // Group transactions by token
-      const tokenGroups: Record<string, any[]> = {};
-      
-      trades.forEach(trade => {
+      trades.forEach((trade: Trade) => {
         if (!tokenGroups[trade.cryptoAsset]) {
           tokenGroups[trade.cryptoAsset] = [];
         }
         tokenGroups[trade.cryptoAsset].push(trade);
       });
-      
-      // Calculate success rate
-      const successfulTrades = trades.filter(t => t.successful).length;
+        // Calculate success rate
+      const successfulTrades = trades.filter((t: Trade) => t.successful).length;
       const overallSuccessRate = (successfulTrades / trades.length) * 100;
       
       // Calculate total profit/loss (simplified version)
       let totalProfitLoss = 0;
-      trades.forEach(trade => {
+      trades.forEach((trade: Trade) => {
         if (trade.type === 'buy') {
           totalProfitLoss -= trade.totalValue;
         } else if (trade.type === 'sell') {
@@ -144,8 +143,8 @@ class TradeAnalysisService {
         : 'N/A';
       
       // Calculate trade frequency
-      const firstTradeTime = Math.min(...trades.map(t => t.timestamp.getTime()));
-      const lastTradeTime = Math.max(...trades.map(t => t.timestamp.getTime()));
+      const firstTradeTime = Math.min(...trades.map((t: Trade) => t.timestamp.getTime()));
+      const lastTradeTime = Math.max(...trades.map((t: Trade) => t.timestamp.getTime()));
       const tradingPeriodWeeks = Math.max(1, (lastTradeTime - firstTradeTime) / (1000 * 60 * 60 * 24 * 7));
       
       let tradeFrequency = 'N/A';
@@ -200,9 +199,8 @@ class TradeAnalysisService {
           bestTrade: {
             profit: parseFloat(bestTrade.totalValue.toFixed(2)),
             date: bestTrade.timestamp
-          },
-          worstTrade: {
-            loss: parseFloat(-worstTrade.totalValue.toFixed(2)),
+          },          worstTrade: {
+            loss: parseFloat((-worstTrade.totalValue).toFixed(2)),
             date: worstTrade.timestamp
           }
         });
@@ -353,13 +351,12 @@ class TradeAnalysisService {
           minimumFractionDigits: 2,
           maximumFractionDigits: 6
         }).format(tokenPrice.price);
-        
-        const formattedChange = new Intl.NumberFormat('en-US', {
+          const formattedChange = new Intl.NumberFormat('en-US', {
           style: 'percent',
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
           signDisplay: 'always'
-        }).format(tokenPrice.priceChange24h / 100);
+        }).format((tokenPrice.priceChange24h || 0) / 100);
         
         const formattedVolume = tokenPrice.volume24h ? new Intl.NumberFormat('en-US', {
           style: 'currency',
@@ -386,7 +383,7 @@ class TradeAnalysisService {
 
 This data is sourced from DexScreener and represents the most liquid ${tokenSymbol} pair.
 
-${tokenPrice.priceChange24h > 0 ? '📈 The price is up in the last 24 hours.' : '📉 The price is down in the last 24 hours.'}
+${(tokenPrice.priceChange24h || 0) > 0 ? '📈 The price is up in the last 24 hours.' : '📉 The price is down in the last 24 hours.'}
 
 For more detailed information and charts, you can use the token search feature above.
 

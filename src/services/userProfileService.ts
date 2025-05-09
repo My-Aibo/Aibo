@@ -27,24 +27,52 @@ interface TradingLesson {
 
 interface UserProfile {
   userId: string;
-  tradingBehavior: TradingBehavior;
-  lessons: TradingLesson[];
-  watchlist: string[];
-  preferredSources: {
+  username?: string;
+  joinedDate?: Date;
+  tradingBehavior?: TradingBehavior;
+  lessons?: TradingLesson[];
+  watchlist?: string[];
+  preferredSources?: {
     news: string[];
     influencers: string[];
     analysts: string[];
   };
-  journalEntries: {
+  preferences?: {
+    theme: string;
+    riskTolerance: string;
+    investmentGoals: string[];
+    notifications: {
+      priceAlerts: boolean;
+      newsFeed: boolean;
+      marketSummary: boolean;
+    }
+  };
+  journalEntries?: {
     date: Date;
     content: string;
     mood: 'positive' | 'neutral' | 'negative';
     tags: string[];
   }[];
+  tradeJournal?: any[];
 }
 
 class UserProfileService {
-  private profile: UserProfile;
+  private profile: UserProfile = {
+    userId: '',
+    username: '',
+    joinedDate: new Date(),
+    preferences: {
+      theme: 'light',
+      riskTolerance: 'medium',
+      investmentGoals: [],
+      notifications: {
+        priceAlerts: true,
+        newsFeed: true,
+        marketSummary: true
+      }
+    },
+    tradeJournal: []
+  };
   private readonly STORAGE_KEY = 'aibo_user_profile';
   
   constructor() {

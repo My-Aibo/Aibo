@@ -74,7 +74,7 @@ const WalletConnect: React.FC = () => {
               </div>
             </div>
             
-            <div className="balance-amount">{walletInfo.balance.toFixed(4)} SOL</div>
+            <div className="balance-amount">{(walletInfo.balance || 0).toFixed(4)} SOL</div>
             
             <div className="wallet-details">
               <div className="detail">

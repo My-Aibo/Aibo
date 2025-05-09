@@ -2,6 +2,32 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './TokenSearch.css';
 import { tradeAnalysisService } from '../services/tradeAnalysisService';
 
+// Define interfaces for token search
+interface TokenSearchItem {
+  address: string;
+  name?: string;
+  symbol?: string;
+  decimals?: number;
+  totalSupply?: number;
+  [key: string]: any; // For any other properties that might be present
+}
+
+interface FormattedSearchResult {
+  baseToken: {
+    address: string;
+    name: string;
+    symbol: string;
+  };
+  quoteToken: {
+    address: string;
+    name: string;
+    symbol: string;
+  };
+  pairAddress?: string;
+  price?: number;
+  [key: string]: any;
+}
+
 // Birdeye API key
 const BIRDEYE_API_KEY = '1cd74346f55f428ab24c8821e1124ec1';
 
@@ -17,6 +43,9 @@ const TokenSearch: React.FC = () => {
   
   // Store full token data for chatbot integration
   const [lastFoundToken, setLastFoundToken] = useState<any>(null);
+  const [selectedToken, setSelectedToken] = useState<any>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searching, setSearching] = useState<boolean>(false);
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -101,9 +130,9 @@ const TokenSearch: React.FC = () => {
 
   // Search tokens by address using Birdeye API
   const searchByAddress = async (address: string) => {
-    console.log(`TokenSearch: Searching by address: ${address}`);
-    
     try {
+      console.log(`TokenSearch: Searching by address: ${address}`);
+      
       // Fetch token info
       const response = await fetch(`https://public-api.birdeye.so/defi/price?address=${address}`, {
         headers: {
@@ -225,12 +254,15 @@ const TokenSearch: React.FC = () => {
         isBirdeyeData: true,
       };
       
-      setTokenData(formattedTokenData);
-      setShowChart(true);
-      
+      // Set the token data in state
+      setSelectedToken(formattedTokenData);
+      setSearchError(null);
     } catch (error) {
-      console.error('Error fetching token data from Birdeye:', error);
-      setError('Failed to fetch token data. Please try another token or address.');
+      console.error("Error searching token by address:", error);
+      setSearchError("Failed to fetch token data. Please check the address and try again.");
+      setSelectedToken(null);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -265,9 +297,19 @@ const TokenSearch: React.FC = () => {
       if (tokens.length === 1) {
         // If only one result, select it directly
         await searchByAddress(tokens[0].address);
-      } else {
-        // Format results for the search results UI
-        const formattedResults = tokens.map(token => ({
+      } else {        // Format results for the search results UI
+        const formattedResults = tokens.map((token: {
+            address: string, 
+            name?: string, 
+            symbol?: string,
+            price?: number,
+            change24h?: number,
+            liquidity?: number,
+            volume24h?: number,
+            marketCap?: number,
+            fdv?: number,
+            logoURI?: string
+          }) => ({
           baseToken: {
             address: token.address,
             name: token.name || 'Unknown',

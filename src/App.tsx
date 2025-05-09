@@ -1,5 +1,5 @@
 import React from 'react';
-import AIAdvisor from './components/AIAdvisor';
+import AIAdvisor from './components/AIAdvisor'; // Changed from import { AIAdvisor }
 import { WalletProvider } from './contexts/WalletContext';
 import WalletButton from './components/WalletButton';
 import './App.css';

@@ -20,7 +20,7 @@ const TradeJournal: React.FC = () => {
   useEffect(() => {
     // Load journal entries from profile
     const profile = userProfileService.getProfile();
-    setEntries(profile.journalEntries);
+    setEntries(profile.journalEntries || []);
   }, []);
   
   const handleAddEntry = () => {
@@ -38,7 +38,7 @@ const TradeJournal: React.FC = () => {
     
     // Update local state
     const profile = userProfileService.getProfile();
-    setEntries(profile.journalEntries);
+    setEntries(profile.journalEntries || []);
     
     // Reset form
     setNewEntry({
