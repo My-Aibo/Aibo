@@ -27,17 +27,17 @@ interface TradingLesson {
 
 interface UserProfile {
   userId: string;
-  username?: string;
-  joinedDate?: Date;
-  tradingBehavior?: TradingBehavior;
-  lessons?: TradingLesson[];
-  watchlist?: string[];
-  preferredSources?: {
+  username: string;
+  joinedDate: Date;
+  tradingBehavior: TradingBehavior;
+  lessons: TradingLesson[];
+  watchlist: string[];
+  preferredSources: {
     news: string[];
     influencers: string[];
     analysts: string[];
   };
-  preferences?: {
+  preferences: {
     theme: string;
     riskTolerance: string;
     investmentGoals: string[];
@@ -47,13 +47,13 @@ interface UserProfile {
       marketSummary: boolean;
     }
   };
-  journalEntries?: {
+  journalEntries: {
     date: Date;
     content: string;
     mood: 'positive' | 'neutral' | 'negative';
     tags: string[];
   }[];
-  tradeJournal?: any[];
+  tradeJournal: any[];
 }
 
 class UserProfileService {
@@ -61,6 +61,27 @@ class UserProfileService {
     userId: '',
     username: '',
     joinedDate: new Date(),
+    tradingBehavior: {
+      riskTolerance: 50,
+      preferredAssets: [],
+      tradingFrequency: 'medium',
+      averageHoldingPeriod: 30,
+      psychologicalPatterns: {
+        fomoTendency: 50,
+        panicSelling: 50,
+        overconfidence: 50,
+        lossAversion: 50,
+      },
+      successfulStrategies: [],
+      preferredExchanges: [],
+    },
+    lessons: [],
+    watchlist: [],
+    preferredSources: {
+      news: [],
+      influencers: [],
+      analysts: [],
+    },
     preferences: {
       theme: 'light',
       riskTolerance: 'medium',
@@ -71,6 +92,7 @@ class UserProfileService {
         marketSummary: true
       }
     },
+    journalEntries: [],
     tradeJournal: []
   };
   private readonly STORAGE_KEY = 'aibo_user_profile';
@@ -102,10 +124,11 @@ class UserProfileService {
       this.initializeDefaultProfile();
     }
   }
-  
-  private initializeDefaultProfile() {
+    private initializeDefaultProfile() {
     this.profile = {
       userId: `user_${new Date().getTime()}`,
+      username: 'DefaultUser',
+      joinedDate: new Date(),
       tradingBehavior: {
         riskTolerance: 50,
         preferredAssets: ['SOL'],
@@ -127,7 +150,18 @@ class UserProfileService {
         influencers: [],
         analysts: [],
       },
+      preferences: {
+        theme: 'light',
+        riskTolerance: 'medium',
+        investmentGoals: ['Growth', 'Income'],
+        notifications: {
+          priceAlerts: true,
+          newsFeed: true,
+          marketSummary: true
+        }
+      },
       journalEntries: [],
+      tradeJournal: []
     };
     
     // Save to storage
@@ -141,10 +175,16 @@ class UserProfileService {
   getProfile(): UserProfile {
     return {...this.profile};
   }
-  
-  updateTradingBehavior(behavior: Partial<TradingBehavior>) {
+    updateTradingBehavior(behavior: Partial<TradingBehavior>) {
+    // Ensure we maintain all required properties and merge in the updates
     this.profile.tradingBehavior = {
-      ...this.profile.tradingBehavior,
+      riskTolerance: this.profile.tradingBehavior.riskTolerance,
+      preferredAssets: this.profile.tradingBehavior.preferredAssets,
+      tradingFrequency: this.profile.tradingBehavior.tradingFrequency,
+      averageHoldingPeriod: this.profile.tradingBehavior.averageHoldingPeriod,
+      psychologicalPatterns: this.profile.tradingBehavior.psychologicalPatterns,
+      successfulStrategies: this.profile.tradingBehavior.successfulStrategies,
+      preferredExchanges: this.profile.tradingBehavior.preferredExchanges,
       ...behavior
     };
     this.saveProfile();
@@ -183,19 +223,27 @@ class UserProfileService {
     this.saveProfile();
   }
   
-  addJournalEntry(entry: Omit<UserProfile['journalEntries'][0], 'date'>) {
+  addJournalEntry(entry: { content: string; mood: 'positive' | 'neutral' | 'negative'; tags: string[] }) {
     this.profile.journalEntries.unshift({
       date: new Date(),
-      ...entry
+      content: entry.content,
+      mood: entry.mood,
+      tags: entry.tags
     });
     this.saveProfile();
   }
   
   updatePreferredSources(sources: Partial<UserProfile['preferredSources']>) {
-    this.profile.preferredSources = {
-      ...this.profile.preferredSources,
-      ...sources
-    };
+    // Ensure we maintain all required properties
+    if (sources.news) {
+      this.profile.preferredSources.news = sources.news;
+    }
+    if (sources.influencers) {
+      this.profile.preferredSources.influencers = sources.influencers;
+    }
+    if (sources.analysts) {
+      this.profile.preferredSources.analysts = sources.analysts;
+    }
     this.saveProfile();
   }
 }

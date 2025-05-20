@@ -6,6 +6,7 @@ const WalletConnect: React.FC = () => {
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     // Check if wallet is already connected on component mount
