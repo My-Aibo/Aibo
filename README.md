@@ -2,9 +2,15 @@
 
 ![Aibo Logo](public/images/Aibo_logo2.png)
 
+[![TypeScript](https://img.shields.io/badge/TypeScript-4.9.5-blue.svg)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.0.0-purple.svg)](https://vitejs.dev/)
+[![Solana](https://img.shields.io/badge/Solana-Enabled-green.svg)](https://solana.com/)
+
 ## Your AI-Powered Digital Twin for Crypto Trading & Financial Management
 
 Aibo is an intelligent digital companion that learns your trading patterns, manages your crypto assets, and evolves with your financial journey. It's designed to help you make smarter decisions and build better financial habits.
+
+![Demo Screenshot](public/images/Aibo_logo2.png)
 
 ## 🌟 Features
 
@@ -63,6 +69,8 @@ npm install
 npm run dev
 ```
 
+The application will be available at `http://localhost:5173/`
+
 ### Configuration
 Create a `.env` file in the root directory with the following variables:
 ```
@@ -70,10 +78,30 @@ VITE_HELIUS_API_KEY=your_helius_api_key
 VITE_AI_API_KEY=your_openai_api_key
 ```
 
+### Technology Stack
+- **Frontend**: React, TypeScript, Vite
+- **Styling**: CSS Modules
+- **Blockchain**: Solana, Phantom Wallet
+- **AI**: OpenAI API for trading analysis
+- **Data**: Helius API for Solana transaction data
+
 ## 🧩 Core Modules
 
 ### User Profile Service
 The profile service tracks and analyzes your trading behavior, learning from your habits to provide better insights over time.
+
+```typescript
+// Example of UserProfile interface
+interface UserProfile {
+  userId: string;
+  tradingExperience: 'beginner' | 'intermediate' | 'advanced';
+  riskTolerance: 'low' | 'medium' | 'high';
+  preferences: {
+    favoriteAssets: string[];
+    tradingFrequency: string;
+  };
+}
+```
 
 ### Wallet Service
 Connect to your Solana wallet to view balances, track transactions, and manage your crypto assets securely.
